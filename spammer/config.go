@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"time"
 
 	txfuzz "github.com/MariusVanDerWijden/tx-fuzz"
 	"github.com/MariusVanDerWijden/tx-fuzz/flags"
@@ -22,12 +23,13 @@ import (
 type Config struct {
 	backend *rpc.Client // connection to the rpc provider
 
-	N          uint64              // number of transactions send per account
-	faucet     *ecdsa.PrivateKey   // private key of the faucet account
-	keys       []*ecdsa.PrivateKey // private keys of accounts
-	corpus     [][]byte            // optional corpus to use elements from
-	accessList bool                // whether to create accesslist transactions
-	gasLimit   uint64              // gas limit per transaction
+	N               uint64              // number of transactions send per account
+	faucet          *ecdsa.PrivateKey   // private key of the faucet account
+	keys            []*ecdsa.PrivateKey // private keys of accounts
+	corpus          [][]byte            // optional corpus to use elements from
+	accessList      bool                // whether to create accesslist transactions
+	gasLimit        uint64              // gas limit per transaction
+	requestInterval time.Duration       // spam request interval
 
 	seed int64            // seed used for generating randomness
 	mut  *mutator.Mutator // Mutator based on the seed
@@ -47,15 +49,16 @@ func NewDefaultConfig(rpcAddr string, N uint64, accessList bool, rng *rand.Rand)
 	}
 
 	return &Config{
-		backend:    backend,
-		N:          N,
-		faucet:     crypto.ToECDSAUnsafe(common.FromHex(txfuzz.SK)),
-		keys:       keys,
-		corpus:     [][]byte{},
-		accessList: accessList,
-		gasLimit:   30_000_000,
-		seed:       0,
-		mut:        mutator.NewMutator(rng),
+		backend:         backend,
+		N:               N,
+		faucet:          crypto.ToECDSAUnsafe(common.FromHex(txfuzz.SK)),
+		keys:            keys,
+		corpus:          [][]byte{},
+		accessList:      accessList,
+		gasLimit:        30_000_000,
+		requestInterval: 12 * time.Second,
+		seed:            0,
+		mut:             mutator.NewMutator(rng),
 	}, nil
 }
 
@@ -120,16 +123,20 @@ func NewConfigFromContext(c *cli.Context) (*Config, error) {
 		}
 	}
 
+	// Setup request interval
+	requestInterval := c.Duration(flags.RequestIntervalFlag.Name)
+
 	return &Config{
-		backend:    backend,
-		N:          uint64(N),
-		faucet:     faucet,
-		accessList: !c.Bool(flags.NoALFlag.Name),
-		gasLimit:   uint64(gasLimit),
-		seed:       seed,
-		keys:       keys,
-		corpus:     corpus,
-		mut:        mut,
+		backend:         backend,
+		N:               uint64(N),
+		faucet:          faucet,
+		accessList:      !c.Bool(flags.NoALFlag.Name),
+		gasLimit:        uint64(gasLimit),
+		requestInterval: requestInterval,
+		seed:            seed,
+		keys:            keys,
+		corpus:          corpus,
+		mut:             mut,
 	}, nil
 }
 
@@ -161,4 +168,8 @@ func readCorpusElements(path string) ([][]byte, error) {
 		corpus = append(corpus, b)
 	}
 	return corpus, nil
+}
+
+func (c *Config) RequestInterval() time.Duration {
+	return c.requestInterval
 }

@@ -1,6 +1,10 @@
 package flags
 
-import "github.com/urfave/cli/v2"
+import (
+	"time"
+
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	SeedFlag = &cli.Int64Flag{
@@ -50,6 +54,12 @@ var (
 		Value: 100_000,
 	}
 
+	RequestIntervalFlag = &cli.DurationFlag{
+		Name:  "request-interval",
+		Usage: "spam request interval",
+		Value: 12 * time.Second,
+	}
+
 	SpamFlags = []cli.Flag{
 		SkFlag,
 		SeedFlag,
@@ -59,5 +69,6 @@ var (
 		TxCountFlag,
 		CountFlag,
 		GasLimitFlag,
+		RequestIntervalFlag,
 	}
 )
