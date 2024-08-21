@@ -20,7 +20,8 @@ import (
 )
 
 type Config struct {
-	backend *rpc.Client // connection to the rpc provider
+	backend  *rpc.Client // connection to the rpc provider
+	backend2 *rpc.Client
 
 	N          uint64              // number of transactions send per account
 	faucet     *ecdsa.PrivateKey   // private key of the faucet account
@@ -64,6 +65,12 @@ func NewConfigFromContext(c *cli.Context) (*Config, error) {
 	// Setup RPC
 	rpcAddr := c.String(flags.RpcFlag.Name)
 	backend, err := rpc.Dial(rpcAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcAddr2 := c.String(flags.Rpc2Flag.Name)
+	backend2, err := rpc.Dial(rpcAddr2)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +132,7 @@ func NewConfigFromContext(c *cli.Context) (*Config, error) {
 
 	return &Config{
 		backend:    backend,
+		backend2:   backend2,
 		N:          uint64(N),
 		faucet:     faucet,
 		accessList: !c.Bool(flags.NoALFlag.Name),

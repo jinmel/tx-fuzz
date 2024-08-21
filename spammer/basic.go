@@ -18,8 +18,17 @@ import (
 
 const TX_TIMEOUT = 5 * time.Minute
 
+func sendTx(client *ethclient.Client, tx *types.Transaction) error {
+	if err := client.SendTransaction(context.Background(), tx); err != nil {
+		log.Warn("Could not submit transaction: %v", err)
+		return err
+	}
+	return nil
+}
+
 func SendBasicTransactions(config *Config, key *ecdsa.PrivateKey, f *filler.Filler) error {
 	backend := ethclient.NewClient(config.backend)
+	backend2 := ethclient.NewClient(config.backend2)
 	sender := crypto.PubkeyToAddress(key.PublicKey)
 	chainID, err := backend.ChainID(context.Background())
 	if err != nil {
@@ -42,10 +51,9 @@ func SendBasicTransactions(config *Config, key *ecdsa.PrivateKey, f *filler.Fill
 		if err != nil {
 			return err
 		}
-		if err := backend.SendTransaction(context.Background(), signedTx); err != nil {
-			log.Warn("Could not submit transaction: %v", err)
-			return err
-		}
+
+		go sendTx(backend, signedTx)
+		go sendTx(backend2, signedTx)
 		lastTx = signedTx
 		time.Sleep(10 * time.Millisecond)
 	}
